@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel X — Penetration Testing Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset + Variables ── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#050a0e;--bg2:#0a1520;--bg3:#0d1e2e;--bg4:#071018;
+  --acc:#00d4ff;--acc2:#00ff88;--acc3:#ff4757;--acc4:#ffa502;--acc5:#c471ed;
+  --border:#1a3a50;--text:#c8e6f5;--muted:#4a7a96;
+  --font:'Rajdhani',sans-serif;--mono:'Share Tech Mono',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+
+/* ── Login Screen ── */
+#login-screen{
+  display:flex;align-items:center;justify-content:center;height:100%;
+  background:var(--bg);position:relative;overflow:hidden;
+}
+#login-screen::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%, rgba(0,212,255,.04) 0%, transparent 70%);
+  pointer-events:none;
+}
+.login-box{
+  background:var(--bg2);border:1px solid var(--border);border-radius:4px;
+  padding:40px;width:380px;position:relative;
+}
+.login-box::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--acc),var(--acc2),transparent);
+}
+.login-logo{font-family:var(--mono);font-size:22px;color:var(--acc);letter-spacing:4px;margin-bottom:6px}
+.login-logo span{color:var(--acc2)}
+.login-sub{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:32px}
+.login-field{margin-bottom:14px}
+.login-field label{display:block;font-family:var(--mono);font-size:9px;color:var(--muted);
+  letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
+.login-field input{width:100%;background:var(--bg3);border:1px solid var(--border);
+  border-radius:2px;color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 12px;
+  outline:none;transition:.15s}
+.login-field input:focus{border-color:var(--acc)}
+.login-btn{width:100%;padding:10px;background:rgba(0,212,255,.1);border:1px solid var(--acc);
+  color:var(--acc);font-family:var(--mono);font-size:12px;letter-spacing:3px;
+  cursor:pointer;text-transform:uppercase;transition:.2s;border-radius:2px;margin-top:8px}
+.login-btn:hover{background:rgba(0,212,255,.2);box-shadow:0 0 12px rgba(0,212,255,.15)}
+.login-error{font-family:var(--mono);font-size:11px;color:var(--acc3);margin-top:10px;text-align:center;min-height:16px}
+
+/* ── App Shell ── */
+#app-shell{display:none;grid-template-columns:186px 1fr;grid-template-rows:46px 1fr;height:100vh}
+
+/* ── Header ── */
+.hdr{
+  grid-column:1/-1;background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 14px;gap:12px;
+}
+.hdr-logo{font-family:var(--mono);font-size:15px;color:var(--acc);letter-spacing:3px}
+.hdr-logo span{color:var(--acc2)}
+.hdr-badge{font-family:var(--mono);font-size:9px;padding:2px 7px;border:1px solid var(--acc3);
+  color:var(--acc3);border-radius:2px;letter-spacing:1px}
+.hdr-target{font-family:var(--mono);font-size:11px;padding:3px 10px;border:1px solid var(--border);
+  background:var(--bg3);border-radius:2px;color:var(--muted)}
+.hdr-target span{color:var(--acc)}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+#ws-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:.3s}
+#ws-dot.connected{background:var(--acc2);box-shadow:0 0 6px var(--acc2);animation:pulse 2s infinite}
+#ws-status{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.hdr-user{font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;
+  padding:4px 10px;border:1px solid var(--border);border-radius:2px;transition:.15s}
+.hdr-user:hover{border-color:var(--muted);color:var(--text)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Sidebar ── */
+.sidebar{
+  background:var(--bg2);border-right:1px solid var(--border);
+  overflow-y:auto;padding:8px 0;
+}
+.nav-group{padding:10px 12px 4px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:2px}
+.nav-item{
+  display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;
+  border-left:2px solid transparent;font-size:13px;font-weight:600;letter-spacing:.5px;
+  transition:.12s;color:var(--muted);
+}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{border-left-color:var(--acc);background:rgba(0,212,255,.06);color:var(--acc)}
+.nav-icon{font-size:12px;width:14px;text-align:center}
+.nav-badge{margin-left:auto;font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:2px}
+.nb-r{background:rgba(255,71,87,.15);color:var(--acc3)}
+.nb-g{background:rgba(0,255,136,.1);color:var(--acc2)}
+.nb-b{background:rgba(0,212,255,.1);color:var(--acc)}
+.nb-p{background:rgba(196,113,237,.12);color:var(--acc5)}
+
+/* ── Main ── */
+.main{overflow-y:auto;padding:14px;background:var(--bg)}
+.section{display:none}.section.active{display:block}
+
+/* ── Panels ── */
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:4px;margin-bottom:10px}
+.phdr{padding:9px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.ptitle{font-family:var(--mono);font-size:11px;color:var(--text);letter-spacing:2px;text-transform:uppercase;font-weight:600}
+.psub{font-size:11px;color:var(--muted);margin-left:4px}
+.abtn{padding:3px 10px;background:transparent;border:1px solid var(--acc);color:var(--acc);
+  font-family:var(--mono);font-size:10px;cursor:pointer;border-radius:2px;letter-spacing:1px;transition:.15s}
+.abtn:hover{background:var(--acc);color:var(--bg)}
+.abtn.r{border-color:var(--acc3);color:var(--acc3)}.abtn.r:hover{background:var(--acc3);color:#fff}
+.abtn.g{border-color:var(--acc2);color:var(--acc2)}.abtn.g:hover{background:var(--acc2);color:var(--bg)}
+.abtn.p{border-color:var(--acc5);color:var(--acc5)}.abtn.p:hover{background:var(--acc5);color:#fff}
+.abtn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Form ── */
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
+.frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;font-family:var(--mono)}
+.field input,.field select,.field textarea{
+  background:var(--bg3);border:1px solid var(--border);border-radius:2px;
+  color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 9px;outline:none;
+  transition:.15s;width:100%
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--acc)}
+.field select option{background:var(--bg3)}
+.field textarea{resize:vertical;min-height:70px;line-height:1.6}
+
+/* ── Flag checkboxes ── */
+.cbgrid{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 12px}
+.cbi{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;
+  padding:3px 9px;border:1px solid var(--border);border-radius:2px;transition:.15s;
+  font-family:var(--mono);color:var(--muted);user-select:none}
+.cbi:hover{border-color:var(--muted);color:var(--text)}
+.cbi.on{border-color:var(--acc);color:var(--acc);background:rgba(0,212,255,.05)}
+.cb-dot{width:5px;height:5px;border-radius:50%;background:var(--border);transition:.15s;flex-shrink:0}
+.cbi.on .cb-dot{background:var(--acc);box-shadow:0 0 4px var(--acc)}
+
+/* ── Command preview ── */
+.cmd-box{margin:0 12px 12px;background:var(--bg4);border:1px solid var(--border);
+  border-radius:3px;padding:10px 12px;font-family:var(--mono);font-size:12px;
+  color:var(--acc2);word-break:break-all;line-height:1.8;min-height:38px}
+
+/* ── Big button ── */
+.bigbtn{display:block;width:calc(100% - 24px);margin:0 12px 12px;padding:10px;
+  background:rgba(0,212,255,.08);border:1px solid var(--acc);color:var(--acc);
+  font-family:var(--mono);font-size:12px;letter-spacing:3px;cursor:pointer;
+  text-transform:uppercase;transition:.2s;border-radius:2px}
+.bigbtn:hover{background:rgba(0,212,255,.18);box-shadow:0 0 12px rgba(0,212,255,.15)}
+.bigbtn:disabled{opacity:.4;cursor:not-allowed}
+.bigbtn.red{border-color:var(--acc3);color:var(--acc3);background:rgba(255,71,87,.05)}
+.bigbtn.red:hover{background:rgba(255,71,87,.15)}
+.bigbtn.green{border-color:var(--acc2);color:var(--acc2);background:rgba(0,255,136,.04)}
+.bigbtn.green:hover{background:rgba(0,255,136,.12)}
+.bigbtn.purple{border-color:var(--acc5);color:var(--acc5);background:rgba(196,113,237,.05)}
+.bigbtn.purple:hover{background:rgba(196,113,237,.15)}
+
+/* ── Progress ── */
+.prog-row{display:none;align-items:center;gap:8px;padding:0 12px 10px}
+.prog-track{height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;flex:1}
+.prog-fill{height:100%;border-radius:2px;transition:width .4s}
+
+/* ── Terminal ── */
+.term{font-family:var(--mono);font-size:11px;padding:10px 12px;background:var(--bg4);
+  height:200px;overflow-y:auto;line-height:1.9;border-top:1px solid var(--border)}
+.tl{display:flex;gap:8px}
+.tt{color:var(--muted);min-width:68px;flex-shrink:0}
+.ts{min-width:52px;font-weight:700;flex-shrink:0}
+.ts.nmap{color:var(--acc)}.ts.vuln{color:var(--acc3)}.ts.sys{color:var(--acc2)}
+.ts.hash{color:var(--acc4)}.ts.ai{color:var(--acc5)}
+.tm{color:var(--text)}.tm.warn{color:var(--acc3)}.tm.ok{color:var(--acc2)}.tm.info{color:var(--acc)}
+
+/* ── Stats ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 12px}
+.sv{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--acc);line-height:1}
+.sv.r{color:var(--acc3)}.sv.g{color:var(--acc2)}.sv.a{color:var(--acc4)}.sv.p{color:var(--acc5)}
+.sl{font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:.5px;text-transform:uppercase}
+
+/* ── AI Chat ── */
+.ai-chat{height:260px;overflow-y:auto;padding:10px 12px;background:var(--bg4);border-top:1px solid var(--border)}
+.ai-msg{margin-bottom:12px;line-height:1.7;font-size:13px}
+.ai-msg .sender{font-family:var(--mono);font-size:9px;letter-spacing:1px;margin-bottom:4px;text-transform:uppercase}
+.ai-msg .sender.user{color:var(--acc)}
+.ai-msg .sender.ai{color:var(--acc5)}
+.ai-msg .body.ai-body{background:rgba(196,113,237,.06);border-left:2px solid var(--acc5);
+  padding:8px 12px;border-radius:0 3px 3px 0}
+.ai-input-row{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border)}
+.ai-input{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  font-family:var(--mono);font-size:11px;padding:7px 10px;outline:none;border-radius:2px}
+.ai-input:focus{border-color:var(--acc5)}
+.ai-send{padding:6px 14px;background:rgba(196,113,237,.15);border:1px solid var(--acc5);
+  color:var(--acc5);font-family:var(--mono);font-size:10px;cursor:pointer;border-radius:2px;transition:.15s}
+.ai-send:hover{background:var(--acc5);color:#fff}
+.ai-cursor{animation:blink .8s steps(1) infinite}
+.ai-loading{display:inline-flex;gap:3px;align-items:center}
+.ai-dot{width:5px;height:5px;border-radius:50%;background:var(--acc5);animation:aidot 1.2s infinite}
+.ai-dot:nth-child(2){animation-delay:.2s}.ai-dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{50%{opacity:0}}
+@keyframes aidot{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+/* ── Tabs ── */
+.tabs{display:flex;border-bottom:1px solid var(--border);padding:0 12px}
+.tab{padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;
+  border-bottom:2px solid transparent;color:var(--muted);transition:.15s;letter-spacing:.3px}
+.tab.active{color:var(--acc);border-bottom-color:var(--acc)}
+.tc{display:none}.tc.active{display:block}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ LOGIN SCREEN ══════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">SENTINEL<span>X</span></div>
+    <div class="login-sub">PENETRATION TESTING PLATFORM v2.0</div>
+    <div class="login-field">
+      <label>Username</label>
+      <input type="text" id="login-user" placeholder="admin" autocomplete="username"
+        onkeydown="if(event.key==='Enter')Login.submit()">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')Login.submit()">
+    </div>
+    <button class="login-btn" onclick="Login.submit()">▶  AUTHENTICATE</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ APP SHELL ══════════════════ -->
+<div id="app-shell">
+
+  <!-- Header -->
+  <header class="hdr">
+    <div class="hdr-logo">SENTINEL<span>X</span></div>
+    <div class="hdr-badge">ARMED</div>
+    <div class="hdr-target">TARGET: <span id="header-target">—</span></div>
+    <div class="hdr-right">
+      <div id="ws-dot"></div>
+      <span id="ws-status" style="font-family:var(--mono);font-size:10px;color:var(--muted)">CONNECTING</span>
+      <button class="hdr-user" onclick="Login.logout()">
+        <span id="header-username">user</span> &nbsp;[logout]
+      </button>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="nav-group">Overview</div>
+    <div class="nav-item active" data-nav="dashboard" onclick="App.nav('dashboard')">
+      <span class="nav-icon">◈</span>Dashboard
+    </div>
+
+    <div class="nav-group">Recon</div>
+    <div class="nav-item" data-nav="nmap" onclick="App.nav('nmap')">
+      <span class="nav-icon">⬡</span>NMAP Builder<span class="nav-badge nb-b">LIVE</span>
+    </div>
+    <div class="nav-item" data-nav="osint" onclick="App.nav('osint')">
+      <span class="nav-icon">◉</span>OSINT
+    </div>
+
+    <div class="nav-group">Attack</div>
+    <div class="nav-item" data-nav="exploits" onclick="App.nav('exploits')">
+      <span class="nav-icon">⚡</span>Exploits<span class="nav-badge nb-r">12</span>
+    </div>
+    <div class="nav-item" data-nav="ddos" onclick="App.nav('ddos')">
+      <span class="nav-icon">▲</span>DDoS Sim
+    </div>
+    <div class="nav-item" data-nav="payload" onclick="App.nav('payload')">
+      <span class="nav-icon">◆</span>Payloads
+    </div>
+
+    <div class="nav-group">Cracking</div>
+    <div class="nav-item" data-nav="hash" onclick="App.nav('hash')">
+      <span class="nav-icon">⚙</span>Hash Cracker<span class="nav-badge nb-b">LIVE</span>
+    </div>
+    <div class="nav-item" data-nav="wordlist" onclick="App.nav('wordlist')">
+      <span class="nav-icon">≡</span>Wordlists<span class="nav-badge nb-b">LIVE</span>
+    </div>
+
+    <div class="nav-group">Analysis</div>
+    <div class="nav-item" data-nav="vulns" onclick="App.nav('vulns')">
+      <span class="nav-icon">⚠</span>Vulnerabilities
+    </div>
+    <div class="nav-item" data-nav="ai" onclick="App.nav('ai')">
+      <span class="nav-icon">✦</span>AI Analyst<span class="nav-badge nb-p">LIVE</span>
+    </div>
+    <div class="nav-item" data-nav="reports" onclick="App.nav('reports')">
+      <span class="nav-icon">◫</span>Reports
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div id="sec-dashboard" class="section active">
+      <div class="stats">
+        <div class="stat"><div class="sv" id="stat-hosts">0</div><div class="sl">Hosts Found</div></div>
+        <div class="stat"><div class="sv r" id="stat-vulns">0</div><div class="sl">Vulnerabilities</div></div>
+        <div class="stat"><div class="sv a" id="stat-ports">0</div><div class="sl">Open Ports</div></div>
+        <div class="stat"><div class="sv p" id="stat-cracked">0</div><div class="sl">Hashes Cracked</div></div>
+      </div>
+      <div class="panel">
+        <div class="phdr"><span class="ptitle">Quick Actions</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:12px">
+          <button class="bigbtn"        onclick="App.nav('nmap')">⬡ NMAP SCANNER</button>
+          <button class="bigbtn red"    onclick="App.nav('hash')">⚙ HASH CRACKER</button>
+          <button class="bigbtn"        onclick="App.nav('wordlist')">≡ WORDLISTS</button>
+          <button class="bigbtn purple" onclick="App.nav('ai')">✦ AI ANALYST</button>
+          <button class="bigbtn red"    onclick="App.nav('exploits')">⚡ EXPLOITS</button>
+          <button class="bigbtn green"  onclick="App.nav('reports')">◫ REPORTS</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="phdr">
+          <span class="ptitle">Live Feed</span>
+          <button class="abtn" style="margin-left:auto" onclick="App.liveFeed.clear()">CLEAR</button>
+        </div>
+        <div class="term" id="live-feed"></div>
+      </div>
+    </div>
+
+    <!-- ══ NMAP BUILDER ══ -->
+    <div id="sec-nmap" class="section">
+      <div class="panel">
+        <div class="phdr">
+          <span class="ptitle">NMAP Command Builder</span>
+          <span id="nmap-binary-status" class="psub"></span>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <button class="abtn" onclick="App.sections['nmap'].copyCmd()">COPY</button>
+            <button class="abtn" onclick="App.sections['nmap'].loadJobs()">HISTORY</button>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="field"><label>Target IP / CIDR / Range</label>
+            <input id="nm-target" value="192.168.1.0/24" oninput="App.sections['nmap'].buildCmd()"/></div>
+          <div class="field"><label>Port Range</label>
+            <input id="nm-ports" value="1-65535" oninput="App.sections['nmap'].buildCmd()"/></div>
+        </div>
+        <div class="frow3">
+          <div class="field"><label>Scan Type</label>
+            <select id="nm-type" onchange="App.sections['nmap'].buildCmd()">
+              <option value="-sS">-sS SYN Stealth</option>
+              <option value="-sT">-sT TCP Connect</option>
+              <option value="-sU">-sU UDP</option>
+              <option value="-sN">-sN Null</option>
+              <option value="-sF">-sF FIN</option>
+              <option value="-sX">-sX Xmas</option>
+              <option value="-sA">-sA ACK</option>
+            </select></div>
+          <div class="field"><label>Timing</label>
+            <select id="nm-timing" onchange="App.sections['nmap'].buildCmd()">
+              <option value="-T0">-T0 Paranoid</option>
+              <option value="-T1">-T1 Sneaky</option>
+              <option value="-T2">-T2 Polite</option>
+              <option value="-T3" selected>-T3 Normal</option>
+              <option value="-T4">-T4 Aggressive</option>
+              <option value="-T5">-T5 Insane</option>
+            </select></div>
+          <div class="field"><label>Output</label>
+            <select id="nm-output" onchange="App.sections['nmap'].buildCmd()">
+              <option value="">Normal stdout</option>
+              <option value="-oN scan.txt">-oN File</option>
+              <option value="-oX scan.xml">-oX XML</option>
+              <option value="-oA scan_all">-oA All</option>
+            </select></div>
+        </div>
+
+        <div style="padding:0 12px 4px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px">DETECTION FLAGS</div>
+        <div class="cbgrid" id="nmap-flags-grid">
+          <label class="cbi on" data-flag="-O"           onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>-O OS</label>
+          <label class="cbi on" data-flag="-sV"          onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>-sV Version</label>
+          <label class="cbi"    data-flag="-sC"          onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>-sC Scripts</label>
+          <label class="cbi"    data-flag="-A"           onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>-A Aggressive</label>
+          <label class="cbi"    data-flag="--traceroute" onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>--traceroute</label>
+          <label class="cbi"    data-flag="-Pn"          onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>-Pn No ping</label>
+          <label class="cbi"    data-flag="-n"           onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>-n No DNS</label>
+          <label class="cbi"    data-flag="--open"       onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>--open</label>
+          <label class="cbi"    data-flag="-v"           onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>-v Verbose</label>
+          <label class="cbi"    data-flag="-f"           onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>-f Fragment</label>
+          <label class="cbi"    data-flag="-D RND:5"     onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>-D Decoy</label>
+        </div>
+
+        <div style="padding:0 12px 4px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px">NSE SCRIPTS</div>
+        <div class="cbgrid">
+          <label class="cbi" data-flag="--script vuln"         onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>vuln</label>
+          <label class="cbi" data-flag="--script auth"         onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>auth</label>
+          <label class="cbi" data-flag="--script brute"        onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>brute</label>
+          <label class="cbi" data-flag="--script exploit"      onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>exploit</label>
+          <label class="cbi" data-flag="--script discovery"    onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>discovery</label>
+          <label class="cbi" data-flag="--script smb-vuln*"    onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>smb-vuln*</label>
+          <label class="cbi" data-flag="--script ssl-heartbleed" onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>heartbleed</label>
+          <label class="cbi" data-flag="--script http-enum"    onclick="this.classList.toggle('on');App.sections['nmap'].buildCmd()"><div class="cb-dot"></div>http-enum</label>
+        </div>
+
+        <div class="cmd-box" id="nmap-cmd-preview">nmap <span style="color:#ffa502">-sS -O -sV -T3</span> <span style="color:#00d4ff">-p1-65535</span> <span style="color:#ff4757">192.168.1.0/24</span></div>
+
+        <div style="display:flex;gap:8px;padding:0 12px 12px">
+          <button class="bigbtn" id="scan-execute-btn" style="margin:0;flex:1"
+            onclick="App.sections['nmap'].executeScan()">▶  EXECUTE SCAN</button>
+          <button class="abtn r" onclick="App.sections['nmap'].cancelScan()">CANCEL</button>
+        </div>
+
+        <div class="prog-row" id="scan-progress-row">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">SCANNING</span>
+          <div class="prog-track"><div class="prog-fill" id="scan-prog-fill" style="width:0%;background:var(--acc)"></div></div>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--acc)" id="scan-prog-pct">0%</span>
+        </div>
+
+        <div id="nmap-results-hosts" style="display:none;padding:12px"></div>
+        <div id="nmap-jobs-table" style="padding:12px;display:none"></div>
+      </div>
+    </div>
+
+    <!-- ══ HASH CRACKER ══ -->
+    <div id="sec-hash" class="section">
+      <div class="panel">
+        <div class="phdr">
+          <span class="ptitle">Hash Cracker</span>
+          <span id="hash-status-bar" class="psub"></span>
+          <button class="abtn" style="margin-left:auto" onclick="App.sections['hash'].loadHistory()">HISTORY</button>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab(this,'crack')">Crack</div>
+          <div class="tab" onclick="switchTab(this,'identify')">Identify</div>
+          <div class="tab" onclick="switchTab(this,'compute')">Compute</div>
+          <div class="tab" onclick="switchTab(this,'history')">History</div>
+        </div>
+
+        <!-- Crack tab -->
+        <div class="tc active" id="tc-crack">
+          <div class="frow">
+            <div class="field" style="grid-column:1/-1">
+              <label>Hashes (one per line)</label>
+              <textarea id="hash-input" rows="4"
+                placeholder="5f4dcc3b5aa765d61d8327deb882cf99&#10;e10adc3949ba59abbe56e057f20f883e"></textarea>
+            </div>
+            <div class="field"><label>Hash Type</label>
+              <select id="hash-type-sel">
+                <option value="auto">Auto-Detect</option>
+                <option value="md5">MD5</option>
+                <option value="sha1">SHA-1</option>
+                <option value="sha256">SHA-256</option>
+                <option value="sha512">SHA-512</option>
+                <option value="ntlm">NTLM</option>
+                <option value="bcrypt">bcrypt</option>
+              </select></div>
+            <div class="field"><label>Attack Mode</label>
+              <select id="hash-mode-sel">
+                <option value="dictionary">Dictionary</option>
+                <option value="bruteforce">Brute Force</option>
+                <option value="hashcat">Hashcat (GPU)</option>
+              </select></div>
+          </div>
+          <div class="frow" id="bf-opts" style="display:none">
+            <div class="field"><label>Min Length</label><input type="number" id="bf-min-len" value="1" min="1" max="12"/></div>
+            <div class="field"><label>Max Length</label><input type="number" id="bf-max-len" value="6" min="1" max="12"/></div>
+            <div style="padding:0 12px;grid-column:1/-1">
+              <label style="font-size:10px;color:var(--muted);font-family:var(--mono);letter-spacing:1px">CHARSETS</label>
+              <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
+                <label class="cbi on"><input type="checkbox" class="charset-cb" value="lower" checked style="display:none"><div class="cb-dot" style="background:var(--acc)"></div>lowercase</label>
+                <label class="cbi"><input type="checkbox" class="charset-cb" value="upper" style="display:none"><div class="cb-dot"></div>UPPERCASE</label>
+                <label class="cbi on"><input type="checkbox" class="charset-cb" value="digits" checked style="display:none"><div class="cb-dot" style="background:var(--acc)"></div>0-9</label>
+                <label class="cbi"><input type="checkbox" class="charset-cb" value="symbols" style="display:none"><div class="cb-dot"></div>symbols</label>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;padding:0 12px 12px">
+            <button class="bigbtn red" style="margin:0;flex:1" onclick="App.sections['hash'].startCrack()">⚙  START CRACKING</button>
+            <button class="abtn r" onclick="App.sections['hash'].stopCrack()">STOP</button>
+          </div>
+          <div class="prog-row" id="crack-progress-row">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">CRACKING</span>
+            <div class="prog-track"><div class="prog-fill" id="crack-prog-fill" style="width:0%;background:var(--acc3)"></div></div>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--acc3)" id="crack-pct-text">0%</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--muted)" id="crack-speed">0 H/s</span>
+          </div>
+          <div id="crack-results-table" style="padding:12px"></div>
+        </div>
+
+        <!-- Identify tab -->
+        <div class="tc" id="tc-identify">
+          <div class="frow"><div class="field" style="grid-column:1/-1">
+            <label>Hashes to identify</label>
+            <textarea id="hash-input" rows="3" placeholder="Paste hashes here…"></textarea>
+          </div></div>
+          <button class="bigbtn" onclick="App.sections['hash'].identify()">◉  IDENTIFY HASHES</button>
+          <div id="hash-identify-results" style="padding:12px"></div>
+        </div>
+
+        <!-- Compute tab -->
+        <div class="tc" id="tc-compute">
+          <div class="frow"><div class="field" style="grid-column:1/-1">
+            <label>Plaintext to hash</label>
+            <input id="hash-plaintext" placeholder="Enter plaintext…"/>
+          </div></div>
+          <button class="bigbtn" onclick="App.sections['hash'].compute()">◈  COMPUTE HASHES</button>
+          <div id="hash-compute-results" style="padding:12px"></div>
+        </div>
+
+        <!-- History tab -->
+        <div class="tc" id="tc-history">
+          <div id="crack-history-table" style="padding:12px">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:20px;text-align:center">
+              Click the History button to load recent jobs
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ WORDLISTS ══ -->
+    <div id="sec-wordlist" class="section">
+      <div class="panel">
+        <div class="phdr">
+          <span class="ptitle">Wordlist Manager</span>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <select id="wl-cat-filter" onchange="App.sections['wordlist'].loadLists(this.value||undefined)"
+              style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);
+              font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:2px">
+              <option value="">All Categories</option>
+              <option value="passwords">Passwords</option>
+              <option value="usernames">Usernames</option>
+              <option value="directories">Directories</option>
+              <option value="subdomains">Subdomains</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+        </div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab(this,'wl-list')">Lists</div>
+          <div class="tab" onclick="switchTab(this,'wl-generate')">Generate</div>
+          <div class="tab" onclick="switchTab(this,'wl-search')">Search</div>
+        </div>
+        <div class="tc active" id="tc-wl-list">
+          <div id="wordlist-table" style="padding:12px"></div>
+        </div>
+        <div class="tc" id="tc-wl-generate">
+          <div class="frow">
+            <div class="field"><label>Base Words (one per line)</label>
+              <textarea id="wl-base-words" rows="5" placeholder="admin&#10;password&#10;company&#10;kali"></textarea></div>
+            <div style="padding:12px 0 0">
+              <div class="field" style="margin-bottom:10px">
+                <label>Output Name</label>
+                <input id="wl-output-name" placeholder="my_wordlist"/>
+              </div>
+              <label style="font-size:10px;color:var(--muted);font-family:var(--mono);letter-spacing:1px">MUTATIONS</label>
+              <div id="mutation-checkboxes" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px"></div>
+            </div>
+          </div>
+          <button class="bigbtn green" id="wl-generate-btn" onclick="App.sections['wordlist'].generate()">≡  GENERATE WORDLIST</button>
+        </div>
+        <div class="tc" id="tc-wl-search">
+          <div class="frow">
+            <div class="field"><label>Wordlist Path</label>
+              <input id="wl-search-path" placeholder="/usr/share/wordlists/rockyou.txt"/></div>
+            <div class="field"><label>Search Term</label>
+              <input id="wl-search-term" placeholder="password" onkeydown="if(event.key==='Enter')App.sections['wordlist'].search()"/></div>
+          </div>
+          <button class="bigbtn" onclick="App.sections['wordlist'].search()">◉  SEARCH</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ AI ANALYST ══ -->
+    <div id="sec-ai" class="section">
+      <div class="panel">
+        <div class="phdr">
+          <span class="ptitle" style="color:var(--acc5)">✦ AI Analyst</span>
+          <span id="ai-status-bar" class="psub"></span>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <button class="abtn p" onclick="App.sections['ai'].clearChat()">CLEAR</button>
+            <button class="abtn p" id="report-executive-btn" onclick="App.sections['ai'].generateReport('executive')">📋 EXECUTIVE</button>
+            <button class="abtn p" id="report-technical-btn" onclick="App.sections['ai'].generateReport('technical')">🔧 TECHNICAL</button>
+          </div>
+        </div>
+
+        <!-- Quick prompts -->
+        <div style="padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:5px">
+          <button class="cbi" style="font-size:10px;cursor:pointer" onclick="App.sections['ai'].quickPrompt('Analyze all critical vulnerabilities and provide remediation steps')">Analyze Vulns</button>
+          <button class="cbi" style="font-size:10px;cursor:pointer" onclick="App.sections['ai'].quickPrompt('What are the most dangerous attack vectors on this network?')">Attack Vectors</button>
+          <button class="cbi" style="font-size:10px;cursor:pointer" onclick="App.sections['ai'].buildAttackChain()" id="attack-chain-btn">⛓ Attack Chain</button>
+          <button class="cbi" style="font-size:10px;cursor:pointer" onclick="App.sections['ai'].quickPrompt('Recommend NMAP flags for deeper enumeration of this target')">NMAP Advice</button>
+          <button class="cbi" style="font-size:10px;cursor:pointer" onclick="App.sections['ai'].quickPrompt('Suggest a wordlist and hashcat strategy for the NTLM hashes found')">Wordlist Strategy</button>
+        </div>
+
+        <!-- CVE lookup -->
+        <div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:rgba(196,113,237,.04)">
+          <input id="cve-input" placeholder="CVE-2021-44228" style="flex:1;background:var(--bg3);border:1px solid var(--border);
+            color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 9px;outline:none;border-radius:2px"
+            onkeydown="if(event.key==='Enter')App.sections['ai'].analyzeCVE()">
+          <button class="abtn p" id="cve-analyze-btn" onclick="App.sections['ai'].analyzeCVE()">ANALYZE CVE</button>
+        </div>
+
+        <div class="ai-chat" id="ai-chat"></div>
+        <div class="ai-input-row">
+          <input class="ai-input" id="ai-input"
+            placeholder="Ask about scan results, CVEs, attack paths, payloads…"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();App.sections['ai'].sendMessage()}">
+          <button class="ai-send" onclick="App.sections['ai'].sendMessage()">ANALYZE ↗</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ STUB SECTIONS ══ -->
+    <div id="sec-osint"    class="section"><div class="panel"><div class="phdr"><span class="ptitle">OSINT</span></div><div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted)">OSINT module — coming next</div></div></div>
+    <div id="sec-exploits" class="section"><div class="panel"><div class="phdr"><span class="ptitle">Exploit Modules</span></div><div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted)">12 exploit modules loaded</div></div></div>
+    <div id="sec-ddos"     class="section"><div class="panel"><div class="phdr"><span class="ptitle">DDoS Simulation</span><span style="font-family:var(--mono);font-size:9px;color:var(--acc3);margin-left:auto">AUTHORIZED LAB ONLY</span></div><div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted)">DDoS simulator — coming next</div></div></div>
+    <div id="sec-payload"  class="section"><div class="panel"><div class="phdr"><span class="ptitle">Payload Generator</span></div><div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted)">Payload generator — coming next</div></div></div>
+    <div id="sec-vulns"    class="section"><div class="panel"><div class="phdr"><span class="ptitle">Vulnerabilities</span><button class="abtn p" style="margin-left:auto" onclick="App.sections['ai'].quickPrompt('Provide full remediation steps for all vulnerabilities found');App.nav('ai')">✦ AI REMEDIATE</button></div><div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted)">Run a scan to populate vulnerability data</div></div></div>
+    <div id="sec-reports"  class="section"><div class="panel"><div class="phdr"><span class="ptitle">Reports</span><button class="abtn p" style="margin-left:auto" onclick="App.sections['ai'].generateReport('markdown');App.nav('ai')">✦ GENERATE WITH AI</button></div><div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted)">Use AI Analyst to generate reports</div></div></div>
+
+  </main>
+</div>
+
+<!-- ══ JS ══ -->
+<script src="/js/api.js"></script>
+<script src="/js/ws.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/modules.js"></script>
+<script>
+// ── Tab switcher
+function switchTab(el, id) {
+  const panel = el.closest('.panel');
+  panel.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  panel.querySelectorAll('.tc').forEach(t => t.classList.remove('active'));
+  const tc = document.getElementById(`tc-${id}`);
+  if (tc) tc.classList.add('active');
+}
+
+// ── Brute force options toggle
+document.getElementById('hash-mode-sel')?.addEventListener('change', function() {
+  const bfOpts = document.getElementById('bf-opts');
+  if (bfOpts) bfOpts.style.display = this.value === 'bruteforce' ? 'grid' : 'none';
+});
+
+// ── Login handler
+const Login = {
+  async submit() {
+    const user = document.getElementById('login-user')?.value?.trim();
+    const pass = document.getElementById('login-pass')?.value;
+    const errEl = document.getElementById('login-error');
+    if (!user || !pass) { if(errEl) errEl.textContent = 'Enter username and password'; return; }
+    const btn = document.querySelector('.login-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳  AUTHENTICATING…'; }
+    try {
+      await API.Auth.login(user, pass);
+      const me = await API.Auth.me();
+      App.state.user = me;
+      App.showApp?.() || location.reload();
+    } catch (err) {
+      if (errEl) errEl.textContent = err.message || 'Authentication failed';
+      if (btn) { btn.disabled = false; btn.textContent = '▶  AUTHENTICATE'; }
+    }
+  },
+  async logout() {
+    await API.Auth.logout();
+    location.reload();
+  },
+};
+
+// ── Modules proxy — live reference to App.sections for onclick handlers
+// App.sections is a getter defined in app.js that returns the private _sections map
+const Modules = new Proxy({}, {
+  get(_, key) { return App.sections[key] || {}; }
+});
+
+// ── Boot
+document.addEventListener('DOMContentLoaded', () => App.boot());
+</script>
+</body>
+</html>

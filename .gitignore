@@ -1,0 +1,11 @@
+node_modules/
+.env
+logs/
+reports/nmap/*
+reports/hash/*
+!reports/nmap/.gitkeep
+!reports/hash/.gitkeep
+*.log
+.DS_Store
+wordlists/*
+!wordlists/.gitkeep
